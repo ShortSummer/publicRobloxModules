@@ -7,10 +7,15 @@ local bufferLen = buffer.len
 local bit32Byteswap = bit32.byteswap
 local bit32RShift = bit32.rshift
 local bit32Byteswap = bit32.byteswap
+local bit32Band = bit32.band
+local bit32LShift = bit32.lshift
+local bit32Bor = bit32.bor
 
 local stringByte = string.byte
 
 local mathCeil = math.ceil
+
+
 
 local lookupValueToCharacter = bufferCreate(64)
 local lookupCharacterToValue = bufferCreate(256)
@@ -42,9 +47,9 @@ local function encode(input: buffer): buffer
 		
 		-- 8 + 24 - (6 * index)
 		local value1 = bit32RShift(chunk, 26)
-		local value2 = bit32.band(bit32RShift(chunk, 20), 0b111111)
-		local value3 = bit32.band(bit32RShift(chunk, 14), 0b111111)
-		local value4 = bit32.band(bit32RShift(chunk, 8), 0b111111)
+		local value2 = bit32Band(bit32RShift(chunk, 20), 0b111111)
+		local value3 = bit32Band(bit32RShift(chunk, 14), 0b111111)
+		local value4 = bit32Band(bit32RShift(chunk, 8), 0b111111)
 		
 		bufferWriteU8(output, outputIndex, bufferReadU8(lookupValueToCharacter, value1))
 		bufferWriteU8(output, outputIndex + 1, bufferReadU8(lookupValueToCharacter, value2))
@@ -58,37 +63,37 @@ local function encode(input: buffer): buffer
 		local chunk = bufferReadU8(input, inputLength - 1)
 		
 		local value1 = bit32RShift(chunk, 2)
-		local value2 = bit32.band(bit32.lshift(chunk, 4), 0b111111)
+		local value2 = bit32Band(bit32LShift(chunk, 4), 0b111111)
 
 		bufferWriteU8(output, outputLength - 4, bufferReadU8(lookupValueToCharacter, value1))
 		bufferWriteU8(output, outputLength - 3, bufferReadU8(lookupValueToCharacter, value2))
 		bufferWriteU8(output, outputLength - 2, padding)
 		bufferWriteU8(output, outputLength - 1, padding)
 	elseif inputRemainder == 2 then
-		local chunk = bit32.bor(
-			bit32.lshift(bufferReadU8(input, inputLength - 2), 8),
+		local chunk = bit32Bor(
+			bit32LShift(bufferReadU8(input, inputLength - 2), 8),
 			bufferReadU8(input, inputLength - 1)
 		)
 
 		local value1 = bit32RShift(chunk, 10)
-		local value2 = bit32.band(bit32RShift(chunk, 4), 0b111111)
-		local value3 = bit32.band(bit32.lshift(chunk, 2), 0b111111)
+		local value2 = bit32Band(bit32RShift(chunk, 4), 0b111111)
+		local value3 = bit32Band(bit32LShift(chunk, 2), 0b111111)
 		
 		bufferWriteU8(output, outputLength - 4, bufferReadU8(lookupValueToCharacter, value1))
 		bufferWriteU8(output, outputLength - 3, bufferReadU8(lookupValueToCharacter, value2))
 		bufferWriteU8(output, outputLength - 2, bufferReadU8(lookupValueToCharacter, value3))
 		bufferWriteU8(output, outputLength - 1, padding)
 	elseif inputRemainder == 0 and inputLength ~= 0 then
-		local chunk = bit32.bor(
-			bit32.lshift(bufferReadU8(input, inputLength - 3), 16),
-			bit32.lshift(bufferReadU8(input, inputLength - 2), 8),
+		local chunk = bit32Bor(
+			bit32LShift(bufferReadU8(input, inputLength - 3), 16),
+			bit32LShift(bufferReadU8(input, inputLength - 2), 8),
 			bufferReadU8(input, inputLength - 1)
 		)
 
 		local value1 = bit32RShift(chunk, 18)
-		local value2 = bit32.band(bit32RShift(chunk, 12), 0b111111)
-		local value3 = bit32.band(bit32RShift(chunk, 6), 0b111111)
-		local value4 = bit32.band(chunk, 0b111111)
+		local value2 = bit32Band(bit32RShift(chunk, 12), 0b111111)
+		local value3 = bit32Band(bit32RShift(chunk, 6), 0b111111)
+		local value4 = bit32Band(chunk, 0b111111)
 
 		bufferWriteU8(output, outputLength - 4, bufferReadU8(lookupValueToCharacter, value1))
 		bufferWriteU8(output, outputLength - 3, bufferReadU8(lookupValueToCharacter, value2))
@@ -122,16 +127,16 @@ local function decode(input: buffer): buffer
 		local value3 = bufferReadU8(lookupCharacterToValue, bufferReadU8(input, inputIndex + 2))
 		local value4 = bufferReadU8(lookupCharacterToValue, bufferReadU8(input, inputIndex + 3))
 		
-		local chunk = bit32.bor(
-			bit32.lshift(value1, 18),
-			bit32.lshift(value2, 12),
-			bit32.lshift(value3, 6),
+		local chunk = bit32Bor(
+			bit32LShift(value1, 18),
+			bit32LShift(value2, 12),
+			bit32LShift(value3, 6),
 			value4
 		)
 		
 		local character1 = bit32RShift(chunk, 16)
-		local character2 = bit32.band(bit32RShift(chunk, 8), 0b11111111)
-		local character3 = bit32.band(chunk, 0b11111111)
+		local character2 = bit32Band(bit32RShift(chunk, 8), 0b11111111)
+		local character3 = bit32Band(chunk, 0b11111111)
 		
 		bufferWriteU8(output, outputIndex, character1)
 		bufferWriteU8(output, outputIndex + 1, character2)
@@ -147,10 +152,10 @@ local function decode(input: buffer): buffer
 		local lastValue3 = bufferReadU8(lookupCharacterToValue, bufferReadU8(input, lastInputIndex + 2))
 		local lastValue4 = bufferReadU8(lookupCharacterToValue, bufferReadU8(input, lastInputIndex + 3))
 
-		local lastChunk = bit32.bor(
-			bit32.lshift(lastValue1, 18),
-			bit32.lshift(lastValue2, 12),
-			bit32.lshift(lastValue3, 6),
+		local lastChunk = bit32Bor(
+			bit32LShift(lastValue1, 18),
+			bit32LShift(lastValue2, 12),
+			bit32LShift(lastValue3, 6),
 			lastValue4
 		)
 		
@@ -159,11 +164,11 @@ local function decode(input: buffer): buffer
 			bufferWriteU8(output, lastOutputIndex, lastCharacter1)
 			
 			if inputPadding <= 1 then
-				local lastCharacter2 = bit32.band(bit32RShift(lastChunk, 8), 0b11111111)
+				local lastCharacter2 = bit32Band(bit32RShift(lastChunk, 8), 0b11111111)
 				bufferWriteU8(output, lastOutputIndex + 1, lastCharacter2)
 				
 				if inputPadding == 0 then
-					local lastCharacter3 = bit32.band(lastChunk, 0b11111111)
+					local lastCharacter3 = bit32Band(lastChunk, 0b11111111)
 					bufferWriteU8(output, lastOutputIndex + 2, lastCharacter3)
 				end
 			end
